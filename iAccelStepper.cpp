@@ -1,5 +1,4 @@
 #include "iAccelStepper.h"
-
 #include "driverlib/timer.h"
 
 volatile boolean state[3];
@@ -24,10 +23,11 @@ void iAccelStepper::ISR(void) {
     // switch off timer at the falling edge
     if(_stepInterval == 0) {
       TimerDisable(g_ulTIMERBase[id], TIMER_A);
-      digitalWrite(GREEN_LED, 0);
       running = false;
+      // disable driver
+//      disableOutputs();
     } else {
-      TimerLoadSet(g_ulTIMERBase[id], TIMER_A, (80*_stepInterval)-1);
+      TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval-1);
       TimerEnable(g_ulTIMERBase[id], TIMER_A);
     }
   }
@@ -45,24 +45,21 @@ typedef void (*ISR_ptr_t)(void);
 //ISR_ptr_t timerISR_ptr[5] = { &timerISR0, &timerISR1, timerISR2, timerISR3, timerISR4 };
 ISR_ptr_t timerISR_ptr[3] = { timerISR0, timerISR1, timerISR2 };
 
-void iAccelStepper::begin(uint8_t pin1, uint8_t pin2)
+void iAccelStepper::begin(uint8_t pin1, uint8_t pin2, uint8_t pin3)
 {
   //                                        STEP  DIR
   AccelStepper::begin(AccelStepper::DRIVER, pin1, pin2);
+  //                         ENABLE
+  AccelStepper::setEnablePin(pin3);
+  AccelStepper::setPinsInverted(false, false, false, false, true);
 
   if(all_instances < 3) {
     id = all_instances;
-    Serial.println("configure timer");
     // Configure timer
     SysCtlPeripheralEnable(g_ulTIMERPeriph[id]);
-    Serial.println("configure sysctl");
 
     TimerConfigure(g_ulTIMERBase[id], TIMER_CFG_ONE_SHOT);
-    Serial.println("configure timerconfigure");
-
     TimerIntEnable(g_ulTIMERBase[id], TIMER_TIMA_TIMEOUT);
-    Serial.println("configure timerintenable");
-
     TimerIntRegister(g_ulTIMERBase[id], TIMER_A, timerISR_ptr[id]);
 
     me[id] = this;
@@ -82,6 +79,8 @@ void iAccelStepper::moveTo(long absolute)
   AccelStepper::moveTo(absolute);
 
   if(!running && (distanceToGo() != 0)) {
+    // enable driver
+//    enableOutputs();
     digitalWrite(_pin[1], _direction);
     computeNewSpeed();
     state[id] = true;
@@ -89,6 +88,11 @@ void iAccelStepper::moveTo(long absolute)
     running = true;
     TimerLoadSet(g_ulTIMERBase[id], TIMER_A, 1);
     TimerEnable(g_ulTIMERBase[id], TIMER_A);
-    digitalWrite(GREEN_LED, 1);
+    if(_direction == DIRECTION_CW)
+      // Clockwise
+      ++_currentPos;
+    else
+      // Anticlockwise
+      --_currentPos;
   }
 }

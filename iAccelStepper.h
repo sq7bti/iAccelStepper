@@ -47,13 +47,13 @@ class iAccelStepper : public AccelStepper
 {
 public:
   iAccelStepper() : AccelStepper() {};
-  void begin(uint8_t pin1 = 2, uint8_t pin2 = 3);
+  void begin(uint8_t pin1 = 2, uint8_t pin2 = 3, uint8_t pin3 = 4);
   void moveTo(long absolute);
   void move(long relative);
   boolean run(void) { return running; };
   void ISR(void);
 private:
-  boolean running;
+  volatile boolean running;
   unsigned int id;
 };
 
