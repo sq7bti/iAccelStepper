@@ -83,6 +83,7 @@ void iAccelStepper::begin(uint8_t pin1, uint8_t pin2, uint8_t pin3)
     ucPin_step[id] = digitalPinToBitMask(pin1);
     ulPort_dir[id] = portOutputRegister(digitalPinToPort(pin2));
     ucPin_dir[id] = digitalPinToBitMask(pin2);
+    direction[id] = false;
   }
 }
 
