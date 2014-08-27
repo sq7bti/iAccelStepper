@@ -11,11 +11,11 @@
 // The list of Timer peripherals.
 //
 //*****************************************************************************
-static const unsigned long g_ulTIMERPeriph[3] =
+static const unsigned long g_ulTIMERPeriph[2] =
 {
 #if defined(PART_TM4C1233H6PM) || defined(PART_LM4F120H5QR)
 //  SYSCTL_PERIPH_TIMER0, // wiring_analog.c analogWrite()
-  SYSCTL_PERIPH_TIMER1,
+//  SYSCTL_PERIPH_TIMER1,
   SYSCTL_PERIPH_TIMER2,
   SYSCTL_PERIPH_TIMER3
 //  SYSCTL_PERIPH_TIMER4, // Tone.c
@@ -27,11 +27,11 @@ static const unsigned long g_ulTIMERPeriph[3] =
 #endif
 };
 
-static const unsigned long g_ulTIMERBase[3] =
+static const unsigned long g_ulTIMERBase[2] =
 {
 #if defined(PART_TM4C1233H6PM) || defined(PART_LM4F120H5QR)
 //  TIMER0_BASE, // wiring_analog.c analogWrite()
-  TIMER1_BASE,
+//  TIMER1_BASE,
   TIMER2_BASE,
   TIMER3_BASE
 //  TIMER4_BASE, // Tone.c
@@ -51,6 +51,7 @@ public:
   void moveTo(long absolute);
   void move(long relative);
   boolean run(void) { return running; };
+  unsigned long stepInterval() { return _stepInterval; };
   void ISR(void);
 private:
   volatile boolean running;
