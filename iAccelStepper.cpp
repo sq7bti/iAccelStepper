@@ -2,13 +2,11 @@
 #include "driverlib/timer.h"
 #include "inc/hw_gpio.h"
 
-#define portOutputRegister(x) (regtype)portBASERegister(x)
-typedef volatile uint32_t regtype;
-typedef uint8_t regsize;
-
 static iAccelStepper* me[2];
-static unsigned int _port_step[2];
-static unsigned int _port_dir[2];
+static uint32_t _port_step[2];
+static uint8_t _pin_step[2];
+static uint32_t _port_dir[2];
+static uint8_t _pin_dir[2];
 static boolean direction[2];
 static unsigned int all_instances;
 static unsigned long ulPeriod;
@@ -25,22 +23,24 @@ void iAccelStepper::ISR(void) {
 
   // prepare for the next period
   computeNewSpeed();
-  if(direction[id] != _direction) {
-    direction[id] = _direction;
-    HWREG(_port_dir[id]) = _direction;
-  }
 
-  // switch off timer at the falling edge
+  // either fire the timer again for another period or switch it off when the move is finished
   if((_stepInterval == 0) || (abs(distanceToGo()) < 1)) {
     TimerDisable(g_ulTIMERBase[id], TIMER_A);
     running = false;
   } else {
-    HWREG(_port_step[id]) = true;
-    delayMicroseconds(ulPeriod);
-    HWREG(_port_step[id]) = false;
+    HWREG(_port_step[id]) = _pin_step[id];
+    // TODO: check if ISR can handle delayMicroseconds(int)
+//    delayMicroseconds(ulPeriod);
+    if(direction[id] != _direction) {
+      direction[id] = _direction;
+      HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
+    }
 
     TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval - ulPeriod);
     TimerEnable(g_ulTIMERBase[id], TIMER_A);
+
+    HWREG(_port_step[id]) = 0;
   }
 }
 
@@ -62,6 +62,7 @@ void iAccelStepper::begin(uint8_t pin1, uint8_t pin2, uint8_t pin3)
   AccelStepper::setEnablePin(pin3);
   AccelStepper::setPinsInverted(false, false, false, false, true);
 
+  // specs of DRV8825 requires 2us, A3967 and A4988 requires atleast 1us step pulse
 //  ulPeriod = 2 * clockCyclesPerMicrosecond();
   ulPeriod = 1;
 
@@ -77,8 +78,10 @@ void iAccelStepper::begin(uint8_t pin1, uint8_t pin2, uint8_t pin3)
     me[id] = this;
     running = false;
     ++all_instances;
-    _port_step[id] = portOutputRegister(digitalPinToPort(pin1)) + (GPIO_O_DATA + digitalPinToBitMask(pin1));
-    _port_dir[id] = portOutputRegister(digitalPinToPort(pin2)) + (GPIO_O_DATA + digitalPinToBitMask(pin2));
+    _port_step[id] = (uint32_t)portBASERegister(digitalPinToPort(pin1)) + (GPIO_O_DATA + (digitalPinToBitMask(pin1) << 2));
+    _pin_step[id] = (uint8_t)digitalPinToBitMask(pin1);
+    _port_dir[id]  = (uint32_t)portBASERegister(digitalPinToPort(pin2)) + (GPIO_O_DATA + (digitalPinToBitMask(pin2) << 2));
+    _pin_dir[id]  = (uint8_t)digitalPinToBitMask(pin2);
     direction[id] = false;
   }
 }
@@ -99,7 +102,7 @@ void iAccelStepper::moveTo(long absolute)
     computeNewSpeed();
     if(direction[id] != _direction) {
       direction[id] = _direction;
-      HWREG(_port_dir[id]) = _direction;
+      HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
     }
 
     if(_direction == DIRECTION_CW)
@@ -109,9 +112,9 @@ void iAccelStepper::moveTo(long absolute)
       // Anticlockwise
       --_currentPos;
 
-    HWREG(_port_step[id]) = true;
+    HWREG(_port_step[id]) = _pin_step[id];
     delayMicroseconds(ulPeriod);
-    HWREG(_port_step[id]) = false;
+    HWREG(_port_step[id]) = 0;
 
     TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval - ulPeriod);
     TimerEnable(g_ulTIMERBase[id], TIMER_A);
