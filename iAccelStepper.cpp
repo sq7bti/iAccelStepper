@@ -1,6 +1,7 @@
 #include "iAccelStepper.h"
 #include "driverlib/timer.h"
 #include "inc/hw_gpio.h"
+#include "inc/hw_timer.h"
 
 static iAccelStepper* me[2];
 static uint32_t _port_step[2];
@@ -9,8 +10,8 @@ static uint32_t _port_dir[2];
 static uint8_t _pin_dir[2];
 static boolean direction[2];
 static boolean _state[2];
-static unsigned int all_instances;
-static unsigned long ulPeriod;
+static unsigned char all_instances;
+static uint32_t ulPeriod;
 
 void iAccelStepper::ISR(void) {
   //TimerIntClear(g_ulTIMERBase[id], TIMER_TIMA_TIMEOUT);
@@ -84,7 +85,8 @@ void iAccelStepper::begin(uint8_t pin1, uint8_t pin2, uint8_t pin3)
     SysCtlPeripheralEnable(g_ulTIMERPeriph[id]);
 
     TimerConfigure(g_ulTIMERBase[id], TIMER_CFG_ONE_SHOT);
-    TimerIntEnable(g_ulTIMERBase[id], TIMER_TIMA_TIMEOUT);
+    //TimerIntEnable(g_ulTIMERBase[id], TIMER_TIMA_TIMEOUT);
+    HWREG(g_ulTIMERBase[id] + TIMER_O_IMR) |= TIMER_TIMA_TIMEOUT;
     TimerIntRegister(g_ulTIMERBase[id], TIMER_A, timerISR_ptr[id]);
 
     me[id] = this;
