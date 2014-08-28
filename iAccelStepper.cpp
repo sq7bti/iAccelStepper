@@ -13,14 +13,17 @@ static unsigned int all_instances;
 static unsigned long ulPeriod;
 
 void iAccelStepper::ISR(void) {
-  TimerIntClear(g_ulTIMERBase[id], TIMER_TIMA_TIMEOUT);
+  //TimerIntClear(g_ulTIMERBase[id], TIMER_TIMA_TIMEOUT);
+  HWREG(g_ulTIMERBase[id] + TIMER_O_ICR) = TIMER_TIMA_TIMEOUT;
 
   // falling edge produce space for length _stepInterval
   if(_state[id]) {
     _state[id] = false;
     HWREG(_port_step[id]) = 0;
-    TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval - ulPeriod);
-    TimerEnable(g_ulTIMERBase[id], TIMER_A);
+    //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval - ulPeriod);
+    HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = _stepInterval - ulPeriod;
+    //TimerEnable(g_ulTIMERBase[id], TIMER_A);
+    HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
   } else {
     // prepare for the next period
     // rising edge - calculate everything necessary and calculate _stepInterval
@@ -35,7 +38,8 @@ void iAccelStepper::ISR(void) {
 
     // either fire the timer again for another period or switch it off when the move is finished
     if((_stepInterval == 0) || (abs(distanceToGo()) < 1)) {
-      TimerDisable(g_ulTIMERBase[id], TIMER_A);
+      //TimerDisable(g_ulTIMERBase[id], TIMER_A);
+      HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) &= ~(TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN));
       running = false;
     } else {
       _state[id] = true;
@@ -44,8 +48,10 @@ void iAccelStepper::ISR(void) {
         direction[id] = _direction;
         HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
       }
-      TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
-      TimerEnable(g_ulTIMERBase[id], TIMER_A);
+      //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
+      HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = ulPeriod;
+      //TimerEnable(g_ulTIMERBase[id], TIMER_A);
+      HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
     }
   }
 }
@@ -122,7 +128,9 @@ void iAccelStepper::moveTo(long absolute)
     HWREG(_port_step[id]) = _pin_step[id];
     _state[id] = true;
 
-    TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
-    TimerEnable(g_ulTIMERBase[id], TIMER_A);
+    //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
+    HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = ulPeriod;
+    //TimerEnable(g_ulTIMERBase[id], TIMER_A);
+    HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
   }
 }
