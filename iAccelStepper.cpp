@@ -3,13 +3,13 @@
 #include "inc/hw_gpio.h"
 #include "inc/hw_timer.h"
 
-static iAccelStepper* me[2];
-static uint32_t _port_step[2];
-static uint8_t _pin_step[2];
-static uint32_t _port_dir[2];
-static uint8_t _pin_dir[2];
-static boolean direction[2];
-static boolean _state[2];
+static iAccelStepper* me[MAX_INST];
+static uint32_t _port_step[MAX_INST];
+static uint8_t _pin_step[MAX_INST];
+static uint32_t _port_dir[MAX_INST];
+static uint8_t _pin_dir[MAX_INST];
+static boolean direction[MAX_INST];
+static boolean _state[MAX_INST];
 static unsigned char all_instances;
 static uint32_t ulPeriod;
 
@@ -20,22 +20,23 @@ void iAccelStepper::ISR(void) {
   // falling edge produce space for length _stepInterval
   if(_state[id]) {
     _state[id] = false;
+
+    // prepare for the next period
+    // rising edge - calculate everything necessary and calculate _stepInterval
+    computeNewSpeed();
+
+    if(direction[id] != _direction) {
+      direction[id] = _direction;
+      HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
+    }
+
     HWREG(_port_step[id]) = 0;
     //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval - ulPeriod);
     HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = _stepInterval - ulPeriod;
     //TimerEnable(g_ulTIMERBase[id], TIMER_A);
     HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
-  } else {
-    // prepare for the next period
-    // rising edge - calculate everything necessary and calculate _stepInterval
-    computeNewSpeed();
 
-    if(_direction == DIRECTION_CW)
-      // Clockwise
-      ++_currentPos;
-    else
-      // Anticlockwise
-      --_currentPos;
+  } else {
 
     // either fire the timer again for another period or switch it off when the move is finished
     if((_stepInterval == 0) || (abs(distanceToGo()) < 1)) {
@@ -44,13 +45,17 @@ void iAccelStepper::ISR(void) {
       running = false;
     } else {
       _state[id] = true;
-      HWREG(_port_step[id]) = _pin_step[id];
-      if(direction[id] != _direction) {
-        direction[id] = _direction;
-        HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
-      }
+
+      if(_direction == DIRECTION_CW)
+        // Clockwise
+        ++_currentPos;
+      else
+        // Anticlockwise
+        --_currentPos;
+
       //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
       HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = ulPeriod;
+      HWREG(_port_step[id]) = _pin_step[id];
       //TimerEnable(g_ulTIMERBase[id], TIMER_A);
       HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
     }
@@ -59,13 +64,13 @@ void iAccelStepper::ISR(void) {
 
 void timerISR0(void) { me[0]->ISR(); }
 void timerISR1(void) { me[1]->ISR(); }
-//void timerISR2(void) { me[2]->ISR(); }
+void timerISR2(void) { me[2]->ISR(); }
 //void timerISR3(void) { me[3]->ISR(); }
 //void timerISR4(void) { me[4]->ISR(); }
 
 typedef void (*ISR_ptr_t)(void);
 //ISR_ptr_t timerISR_ptr[5] = { &timerISR0, &timerISR1, timerISR2, timerISR3, timerISR4 };
-ISR_ptr_t timerISR_ptr[2] = { timerISR0, timerISR1 };
+ISR_ptr_t timerISR_ptr[MAX_INST] = { timerISR0, timerISR1 };
 
 void iAccelStepper::begin(uint8_t pin1, uint8_t pin2, uint8_t pin3)
 {
@@ -73,13 +78,13 @@ void iAccelStepper::begin(uint8_t pin1, uint8_t pin2, uint8_t pin3)
   AccelStepper::begin(AccelStepper::DRIVER, pin1, pin2);
   //                         ENABLE
   AccelStepper::setEnablePin(pin3);
-  AccelStepper::setPinsInverted(false, false, false, false, true);
+  AccelStepper::setPinsInverted(false, false, true);
 
   // specs of DRV8825 requires 2us, A3967 and A4988 requires atleast 1us step pulse
-  ulPeriod = clockCyclesPerMicrosecond();
-//  ulPeriod = 1;
+//  ulPeriod = clockCyclesPerMicrosecond() * 2;
+  ulPeriod = 1;
 
-  if(all_instances < 2) {
+  if(all_instances < MAX_INST) {
     id = all_instances;
     // Configure timer
     SysCtlPeripheralEnable(g_ulTIMERPeriph[id]);
@@ -112,26 +117,20 @@ void iAccelStepper::moveTo(long absolute)
 
   if(!running && (distanceToGo() != 0)) {
     running = true;
-    // enable driver
-//    enableOutputs();
+
     computeNewSpeed();
+
     if(direction[id] != _direction) {
       direction[id] = _direction;
       HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
     }
 
-    if(_direction == DIRECTION_CW)
-      // Clockwise
-      ++_currentPos;
-    else
-      // Anticlockwise
-      --_currentPos;
-
-    HWREG(_port_step[id]) = _pin_step[id];
-    _state[id] = true;
+    HWREG(_port_step[id]) = 0;
+    _state[id] = false;
 
     //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
-    HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = ulPeriod;
+    HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = _stepInterval - ulPeriod;
+//    HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = ulPeriod;
     //TimerEnable(g_ulTIMERBase[id], TIMER_A);
     HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
   }

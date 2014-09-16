@@ -6,12 +6,14 @@
 
 #include "driverlib/sysctl.h"
 
+#define MAX_INST 2
+
 //*****************************************************************************
 //
 // The list of Timer peripherals.
 //
 //*****************************************************************************
-static const unsigned long g_ulTIMERPeriph[2] =
+static const unsigned long g_ulTIMERPeriph[MAX_INST] =
 {
 #if defined(PART_TM4C1233H6PM) || defined(PART_LM4F120H5QR)
 //  SYSCTL_PERIPH_TIMER0, // wiring_analog.c analogWrite()
@@ -27,7 +29,7 @@ static const unsigned long g_ulTIMERPeriph[2] =
 #endif
 };
 
-static const unsigned long g_ulTIMERBase[2] =
+static const unsigned long g_ulTIMERBase[MAX_INST] =
 {
 #if defined(PART_TM4C1233H6PM) || defined(PART_LM4F120H5QR)
 //  TIMER0_BASE, // wiring_analog.c analogWrite()
