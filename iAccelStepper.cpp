@@ -22,7 +22,7 @@ void iAccelStepper::ISR(void) {
     _state[id] = false;
 
     // prepare for the next period
-    // rising edge - calculate everything necessary and calculate _stepInterval
+    // falling edge - calculate everything necessary and calculate _stepInterval
     computeNewSpeed();
 
     if(direction[id] != _direction) {
@@ -64,7 +64,7 @@ void iAccelStepper::ISR(void) {
 
 void timerISR0(void) { me[0]->ISR(); }
 void timerISR1(void) { me[1]->ISR(); }
-void timerISR2(void) { me[2]->ISR(); }
+//void timerISR2(void) { me[2]->ISR(); }
 //void timerISR3(void) { me[3]->ISR(); }
 //void timerISR4(void) { me[4]->ISR(); }
 
@@ -128,9 +128,8 @@ void iAccelStepper::moveTo(long absolute)
     HWREG(_port_step[id]) = 0;
     _state[id] = false;
 
-    //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
+    //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval - ulPeriod);
     HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = _stepInterval - ulPeriod;
-//    HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = ulPeriod;
     //TimerEnable(g_ulTIMERBase[id], TIMER_A);
     HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
   }
