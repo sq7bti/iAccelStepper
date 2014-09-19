@@ -3,6 +3,43 @@
 #include "inc/hw_gpio.h"
 #include "inc/hw_timer.h"
 
+//*****************************************************************************
+//
+// The list of Timer peripherals.
+//
+//*****************************************************************************
+static const unsigned long g_ulTIMERPeriph[MAX_INST] =
+{
+#if defined(PART_TM4C1233H6PM) || defined(PART_LM4F120H5QR)
+//  SYSCTL_PERIPH_TIMER0, // wiring_analog.c analogWrite()
+//  SYSCTL_PERIPH_TIMER1,
+  SYSCTL_PERIPH_TIMER2,
+  SYSCTL_PERIPH_TIMER3
+//  SYSCTL_PERIPH_TIMER4, // Tone.c
+//  SYSCTL_PERIPH_TIMER5, // wiring.c - millis() micros()
+//  SYSCTL_PERIPH_TIMER6,
+//  SYSCTL_PERIPH_TIMER7
+#else
+  #error "**** No PART defined or unsupported PART ****"
+#endif
+};
+
+static const unsigned long g_ulTIMERBase[MAX_INST] =
+{
+#if defined(PART_TM4C1233H6PM) || defined(PART_LM4F120H5QR)
+//  TIMER0_BASE, // wiring_analog.c analogWrite()
+//  TIMER1_BASE,
+  TIMER2_BASE,
+  TIMER3_BASE
+//  TIMER4_BASE, // Tone.c
+//  TIMER5_BASE, // wiring.c - millis() micros()
+//  TIMER6_BASE,
+//  TIMER7_BASE
+#else
+  #error "**** No PART defined or unsupported PART ****"
+#endif
+};
+
 static iAccelStepper* me[MAX_INST];
 static uint32_t _port_step[MAX_INST];
 static uint8_t _pin_step[MAX_INST];
@@ -30,35 +67,34 @@ void iAccelStepper::ISR(void) {
       HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
     }
 
-    HWREG(_port_step[id]) = 0;
-    //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval - ulPeriod);
-    HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = _stepInterval - ulPeriod;
-    //TimerEnable(g_ulTIMERBase[id], TIMER_A);
-    HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
-
-  } else {
-
     // either fire the timer again for another period or switch it off when the move is finished
     if((_stepInterval == 0) || (abs(distanceToGo()) < 1)) {
       //TimerDisable(g_ulTIMERBase[id], TIMER_A);
       HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) &= ~(TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN));
       running = false;
     } else {
-      _state[id] = true;
-
-      if(_direction == DIRECTION_CW)
-        // Clockwise
-        ++_currentPos;
-      else
-        // Anticlockwise
-        --_currentPos;
-
-      //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
-      HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = ulPeriod;
-      HWREG(_port_step[id]) = _pin_step[id];
+      HWREG(_port_step[id]) = 0;
+      //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, _stepInterval - ulPeriod);
+      HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = _stepInterval - ulPeriod;
       //TimerEnable(g_ulTIMERBase[id], TIMER_A);
       HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
     }
+  } else {
+
+    _state[id] = true;
+
+    if(_direction == DIRECTION_CW)
+      // Clockwise
+      ++_currentPos;
+    else
+      // Anticlockwise
+      --_currentPos;
+
+    //TimerLoadSet(g_ulTIMERBase[id], TIMER_A, ulPeriod);
+    HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = ulPeriod;
+    HWREG(_port_step[id]) = _pin_step[id];
+    //TimerEnable(g_ulTIMERBase[id], TIMER_A);
+    HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
   }
 }
 
@@ -117,8 +153,6 @@ void iAccelStepper::moveTo(long absolute)
 
   if(!running && (distanceToGo() != 0)) {
     running = true;
-
-    computeNewSpeed();
 
     if(direction[id] != _direction) {
       direction[id] = _direction;

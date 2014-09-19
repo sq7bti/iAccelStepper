@@ -12,7 +12,7 @@ index 1714788..7674368 100644
      _interface = interface;
      _currentPos = 0;
 diff --git a/AccelStepper.h b/AccelStepper.h
-index cc6b6dc..084aad6 100644
+index cc6b6dc..9fdb983 100644
 --- a/AccelStepper.h
 +++ b/AccelStepper.h
 @@ -287,7 +287,8 @@ public:
@@ -25,9 +25,9 @@ index cc6b6dc..084aad6 100644
  
      /// Alternate Constructor which will call your own functions for forward and backward steps. 
      /// You can have multiple simultaneous steppers, all moving
-@@ -435,6 +436,29 @@ public:
-     /// \param[in] enableInvert    True for inverted enable pin, false (default) for non-inverted
-     void    setPinsInverted(bool pin1Invert, bool pin2Invert, bool pin3Invert, bool pin4Invert, bool enableInvert);
+@@ -437,6 +438,29 @@ public:
+ 
+ protected:
  
 +    /// The current interval between steps in microseconds.
 +    /// 0 means the motor is currently stopped with _speed == 0
@@ -52,9 +52,9 @@ index cc6b6dc..084aad6 100644
 +    /// stepper motor or driver
 +    uint8_t        _pin[4];
 +
- protected:
- 
      /// \brief Direction indicator
+     /// Symbolic names for the direction the motor is turning
+     typedef enum
 @@ -515,31 +539,14 @@ protected:
      /// pin3, pin4.
      /// \param[in] step The current step phase number (0 to 7)
