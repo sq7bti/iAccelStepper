@@ -16,7 +16,9 @@ public:
   void moveTo(long absolute);
   void move(long relative);
   boolean run(void) { return running; };
+  void setSpeed(float speed);
   unsigned long stepInterval() { return _stepInterval; };
+  boolean direction() { return _direction; };
 
   friend void timerISR0();
   friend void timerISR1();

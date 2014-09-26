@@ -45,8 +45,9 @@ static uint32_t _port_step[MAX_INST];
 static uint8_t _pin_step[MAX_INST];
 static uint32_t _port_dir[MAX_INST];
 static uint8_t _pin_dir[MAX_INST];
-static boolean direction[MAX_INST];
+static boolean dir[MAX_INST];
 static boolean _state[MAX_INST];
+static boolean _setspeed[MAX_INST];
 static unsigned char all_instances;
 static uint32_t ulPeriod;
 
@@ -60,15 +61,17 @@ void iAccelStepper::ISR(void) {
 
     // prepare for the next period
     // falling edge - calculate everything necessary and calculate _stepInterval
-    computeNewSpeed();
+    if(!_setspeed[id])
+      computeNewSpeed();
 
-    if(direction[id] != _direction) {
-      direction[id] = _direction;
+    if(dir[id] != _direction) {
+      dir[id] = _direction;
       HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
     }
 
     // either fire the timer again for another period or switch it off when the move is finished
-    if((_stepInterval == 0) || (abs(distanceToGo()) < 1)) {
+//    if((_stepInterval == 0) || (abs(distanceToGo()) < 1)) {
+    if((_stepInterval == 0) && (!_setspeed[id])) {
       //TimerDisable(g_ulTIMERBase[id], TIMER_A);
       HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) &= ~(TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN));
       running = false;
@@ -137,8 +140,9 @@ void iAccelStepper::begin(uint8_t pin1, uint8_t pin2, uint8_t pin3)
     _pin_step[id] = (uint8_t)digitalPinToBitMask(pin1);
     _port_dir[id]  = (uint32_t)portBASERegister(digitalPinToPort(pin2)) + (GPIO_O_DATA + (digitalPinToBitMask(pin2) << 2));
     _pin_dir[id]  = (uint8_t)digitalPinToBitMask(pin2);
-    direction[id] = false;
+    dir[id] = false;
     _state[id] = false;
+    _setspeed[id] = false;
   }
 }
 
@@ -154,8 +158,8 @@ void iAccelStepper::moveTo(long absolute)
   if(!running && (distanceToGo() != 0)) {
     running = true;
 
-    if(direction[id] != _direction) {
-      direction[id] = _direction;
+    if(dir[id] != _direction) {
+      dir[id] = _direction;
       HWREG(_port_dir[id]) = _direction?_pin_dir[id]:0;
     }
 
@@ -166,5 +170,15 @@ void iAccelStepper::moveTo(long absolute)
     HWREG(g_ulTIMERBase[id] + TIMER_O_TAILR) = _stepInterval - ulPeriod;
     //TimerEnable(g_ulTIMERBase[id], TIMER_A);
     HWREG(g_ulTIMERBase[id] + TIMER_O_CTL) |= TIMER_A & (TIMER_CTL_TAEN | TIMER_CTL_TBEN);
+  }
+}
+
+void iAccelStepper::setSpeed(float speed)
+{
+  if(abs(speed) > 0.000001) {
+    _setspeed[id] = true;
+    AccelStepper::setSpeed(speed);
+  } else {
+    _setspeed[id] = false;
   }
 }
