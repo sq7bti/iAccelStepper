@@ -12,10 +12,12 @@ To use this module inherit from the AccelStepper class (http://www.airspayce.com
 * _speed
 * _pin[4]
 
+Easiest is to use provided patch https://github.com/sq7bti/iAccelStepper/blob/master/AccelStepper.patch
+
 Within Energia on LM4F target there are only two timers available for free use: Timer1 and Timer2
 
 - //  SYSCTL_PERIPH_TIMER0, // wiring_analog.c analogWrite()
-- //  SYSCTL_PERIPH_TIMER1,
+-   SYSCTL_PERIPH_TIMER1,
 -   SYSCTL_PERIPH_TIMER2,
 -   SYSCTL_PERIPH_TIMER3
 - //  SYSCTL_PERIPH_TIMER4, // Tone.c
