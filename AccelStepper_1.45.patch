@@ -1,0 +1,89 @@
+diff --git a/AccelStepper.cpp b/AccelStepper.cpp
+index 64a2d4a..316d950 100644
+--- a/AccelStepper.cpp
++++ b/AccelStepper.cpp
+@@ -189,7 +189,7 @@ boolean AccelStepper::run()
+     return _speed != 0.0 || distanceToGo() != 0;
+ }
+ 
+-AccelStepper::AccelStepper(uint8_t interface, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, bool enable)
++void AccelStepper::begin(uint8_t interface, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, bool enable)
+ {
+     _interface = interface;
+     _currentPos = 0;
+diff --git a/AccelStepper.h b/AccelStepper.h
+index ade6f34..640ccc0 100644
+--- a/AccelStepper.h
++++ b/AccelStepper.h
+@@ -295,7 +295,8 @@ public:
+     /// to pin 5.
+     /// \param[in] enable If this is true (the default), enableOutputs() will be called to enable
+     /// the output pins at construction time.
+-    AccelStepper(uint8_t interface = AccelStepper::FULL4WIRE, uint8_t pin1 = 2, uint8_t pin2 = 3, uint8_t pin3 = 4, uint8_t pin4 = 5, bool enable = true);
++    Accelstepper() {};
++    void begin(uint8_t interface = AccelStepper::FULL4WIRE, uint8_t pin1 = 2, uint8_t pin2 = 3, uint8_t pin3 = 4, uint8_t pin4 = 5, bool enable = true);
+ 
+     /// Alternate Constructor which will call your own functions for forward and backward steps. 
+     /// You can have multiple simultaneous steppers, all moving
+@@ -525,18 +526,10 @@ protected:
+     /// \param[in] step The current step phase number (0 to 7)
+     virtual void   step8(long step);
+ 
+-private:
+-    /// Number of pins on the stepper motor. Permits 2 or 4. 2 pins is a
+-    /// bipolar, and 4 pins is a unipolar.
+-    uint8_t        _interface;          // 0, 1, 2, 4, 8, See MotorInterfaceType
+-
+     /// Arduino pin number assignments for the 2 or 4 pins required to interface to the
+     /// stepper motor or driver
+     uint8_t        _pin[4];
+ 
+-    /// Whether the _pins is inverted or not
+-    uint8_t        _pinInverted[4];
+-
+     /// The current absolution position in steps.
+     long           _currentPos;    // Steps
+ 
+@@ -549,6 +542,21 @@ private:
+     /// Positive is clockwise
+     float          _speed;         // Steps per second
+ 
++    /// The current interval between steps in microseconds.
++    /// 0 means the motor is currently stopped with _speed == 0
++    unsigned long  _stepInterval;
++
++    /// Current direction motor is spinning in
++    boolean _direction; // 1 == CW
++
++private:
++    /// Number of pins on the stepper motor. Permits 2 or 4. 2 pins is a
++    /// bipolar, and 4 pins is a unipolar.
++    uint8_t        _interface;          // 0, 1, 2, 4, 8, See MotorInterfaceType
++
++    /// Whether the _pins is inverted or not
++    uint8_t        _pinInverted[4];
++
+     /// The maximum permitted speed in steps per second. Must be > 0.
+     float          _maxSpeed;
+ 
+@@ -557,10 +565,6 @@ private:
+     float          _acceleration;
+     float          _sqrt_twoa; // Precomputed sqrt(2*_acceleration)
+ 
+-    /// The current interval between steps in microseconds.
+-    /// 0 means the motor is currently stopped with _speed == 0
+-    unsigned long  _stepInterval;
+-
+     /// The last step time in microseconds
+     unsigned long  _lastStepTime;
+ 
+@@ -597,9 +601,6 @@ private:
+     /// Min step size in microseconds based on maxSpeed
+     float _cmin; // at max speed
+ 
+-    /// Current direction motor is spinning in
+-    boolean _direction; // 1 == CW
+-
+ };
+ 
+ /// @example Random.pde
