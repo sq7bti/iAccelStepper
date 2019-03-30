@@ -48,5 +48,5 @@ setup() should contain initialisation call:
 axis1.begin(PB_0, PB_5);
 axis2.begin(PE_4, PB_1);
 ```
-To perform a movement, the usual methods of the original AccelStepper should be used, such as **move()*, **moveTo()** and **stop()**. The difference is iAccelStepper _DO_NOT_REQUIRE_ call ~~run()~~ method. See example for more.
+To perform a movement, the usual methods of the original AccelStepper should be used, such as **move()**, **moveTo()** and **stop()**. The difference is iAccelStepper _DO_NOT_REQUIRE_ call ~~run()~~ method. See example for more.
 
